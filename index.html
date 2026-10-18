@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-Driven Accessible UI Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        .listening-pulse { animation: pulse-ring 2s infinite; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-microphone-lines text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base md:text-lg text-white">Voice-Navigable Studio</h1>
+                <p class="text-xs text-slate-400">Mobile-Optimized Accessibility Playground</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="toggleVoiceOutput()" id="btnVoiceOut" class="px-3 py-1.5 text-xs font-medium rounded-xl transition bg-slate-800 border border-slate-700 text-slate-300 flex items-center gap-2">
+                <i class="fa-solid fa-volume-high text-indigo-400"></i> Voice Output: ON
+            </button>
+            <span class="hidden sm:flex px-3 py-1 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Speech Ready
+            </span>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto">
+        
+        <!-- Left 2 Columns: Search, Voice Command Bar & Results -->
+        <div class="lg:col-span-2 flex flex-col space-y-6">
+            
+            <!-- Voice Control Hub Card -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-microphone text-indigo-400"></i> Voice Recognition Control
+                    </h2>
+                    <span class="text-xs text-indigo-400 font-mono" id="voiceCommandHint">Say: "Search [query]" or "Select [1-3]"</span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <button id="btnListen" onclick="toggleListening()" class="w-full sm:w-auto px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
+                        <i class="fa-solid fa-microphone text-sm"></i> <span id="listenBtnText">Start Voice Listening</span>
+                    </button>
+                    <div class="flex-1 relative w-full">
+                        <input type="text" id="searchInput" oninput="handleSearchInput(this.value)" placeholder="Speak or type your query here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 pr-10">
+                        <button onclick="clearSearch()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Voice Transcript Feed -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center gap-3 text-xs text-slate-400">
+                    <i class="fa-solid fa-wave-square text-indigo-400 animate-pulse text-base"></i>
+                    <div>
+                        <span class="font-medium text-slate-300">Heard Speech:</span> <span id="transcriptOutput" class="italic text-slate-400">None yet. Click start and speak clearly...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results Cards Container -->
+            <div class="flex flex-col space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-list text-indigo-400"></i> Search Results & Accessible Cards (<span id="resultCount">3</span>)
+                    </h2>
+                    <div class="text-xs text-slate-400">Navigate via Voice: <code class="text-indigo-400 font-mono">"Select One"</code></div>
+                </div>
+
+                <div id="cardsGrid" class="grid grid-cols-1 gap-4">
+                    <!-- Cards will be populated dynamically -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Detail Drill-Down & Voice Command Logs -->
+        <div class="flex flex-col space-y-6">
+            
+            <!-- Active Card Detail Drill-Down View -->
+            <div id="detailCardContainer" class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col flex-1 min-h-[320px]">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-book-open text-indigo-400"></i> Active Drill-Down View
+                    </h2>
+                    <button onclick="navigateBack()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 transition flex items-center gap-1.5 border border-slate-700">
+                        <i class="fa-solid fa-arrow-left"></i> Go Back
+                    </button>
+                </div>
+                
+                <div id="detailContent" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between text-xs space-y-4">
+                    <div class="text-slate-500 text-center italic py-12">
+                        Say <code class="text-indigo-400">"Select [number]"</code> or click a card to open full details and test voice actions like <code class="text-indigo-400">"Email this"</code>.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Voice & System Logs -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-indigo-400"></i> Voice Intent & System Log
+                    </h2>
+                    <button onclick="clearLogs()" class="text-xs text-slate-500 hover:text-slate-300 transition">Clear</button>
+                </div>
+                <div id="eventLogs" class="bg-slate-950 border border-slate-800 rounded-xl p-3 h-36 overflow-y-auto font-mono text-[11px] text-slate-400 space-y-1">
+                    [System] Voice Navigation Studio initialized. Mobile-safe recognition ready.
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // Mock Database of Cards
+        const database = [
+            {
+                id: 1,
+                title: "Quantum Navigation Copilot",
+                category: "Aerospace & Driving",
+                summary: "Hands-free quantum trajectory mapping designed for extreme multi-tasking environments and low-latency vehicle telemetry.",
+                details: "The Quantum Navigation Copilot provides sub-millimeter positioning vectors using multi-sensor fusion. Fully compliant with ISO hands-free voice protocols. Ideal for long-haul transit and rugged navigation setups."
+            },
+            {
+                id: 2,
+                title: "Secure WebRTC Support Mesh",
+                category: "Customer Experience",
+                summary: "Encrypted peer-to-peer video escalation and missed call vault designed for instantaneous customer triage.",
+                details: "Allows support teams to instantly ingest customer SDP offers via URL tokens or email, routing secure audio, video, and data channels directly through browser nodes without centralized server storage."
+            },
+            {
+                id: 3,
+                title: "Multimodal Accessibility Suite",
+                category: "Universal Design",
+                summary: "Eyes-free auditory feedback engine with numeric visual badges for complete voice-driven UI traversal.",
+                details: "Built on native browser Web Speech and Speech Synthesis APIs. Enables users to navigate lists, inspect details, trigger actions, and say 'Email this report' entirely hands-free."
+            }
+        ];
+
+        let activeCards = [...database];
+        let selectedItem = null;
+        let recognition = null;
+        let isListening = false;
+        let voiceOutputEnabled = true;
+
+        window.onload = function() {
+            renderCards(activeCards);
+            setupSpeechRecognition();
+        };
+
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                logEvent("Speech recognition not supported in this browser. Use Chrome or Edge for full voice features.");
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            // IMPORTANT FOR MOBILE: Turn off continuous mode to prevent Android Chrome audio session hangs
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isListening = true;
+                const btn = document.getElementById('btnListen');
+                btn.className = "w-full sm:w-auto px-6 py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 listening-pulse";
+                document.getElementById('listenBtnText').innerText = "Listening (Speak Now)...";
+                logEvent("Microphone listening active.");
+            };
+
+            recognition.onresult = (event) => {
+                let interim = '';
+                let final = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        final += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
+                }
+
+                const transcript = (final || interim).trim().toLowerCase();
+                if (transcript) {
+                    document.getElementById('transcriptOutput').innerText = `"${transcript}"`;
+                    if (final) {
+                        parseVoiceCommand(final.toLowerCase());
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => {
+                logEvent("Speech recognition error: " + event.error);
+                stopListening();
+            };
+
+            recognition.onend = () => {
+                stopListening();
+            };
+        }
+
+        // Pre-request microphone permission to prevent Android UI thread deadlocks
+        async function toggleListening() {
+            if (!recognition) {
+                alert("Speech recognition is not supported in your current browser.");
+                return;
+            }
+
+            if (isListening) {
+                stopListening();
+                return;
+            }
+
+            try {
+                // Ensure microphone permission is explicitly granted before starting recognition
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    // Immediately stop the stream track since recognition handles its own audio input
+                    stream.getTracks().forEach(t => t.stop());
+                }
+                recognition.start();
+            } catch(e) {
+                logEvent("Microphone permission or start error: " + e.message);
+                stopListening();
+            }
+        }
+
+        function stopListening() {
+            isListening = false;
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+            }
+            const btn = document.getElementById('btnListen');
+            if (btn) {
+                btn.className = "w-full sm:w-auto px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20";
+                document.getElementById('listenBtnText').innerText = "Start Voice Listening";
+            }
+            logEvent("Microphone listening stopped.");
+        }
+
+        function parseVoiceCommand(cmd) {
+            logEvent(`Parsed Intent: "${cmd}"`);
+
+            if (cmd.includes('select') || cmd.includes('open') || cmd.includes('number')) {
+                if (cmd.includes('one') || cmd.includes('1')) { selectCardByIndex(0); return; }
+                if (cmd.includes('two') || cmd.includes('2')) { selectCardByIndex(1); return; }
+                if (cmd.includes('three') || cmd.includes('3')) { selectCardByIndex(2); return; }
+            }
+
+            if (cmd.includes('go back') || cmd.includes('back') || cmd.includes('return')) {
+                navigateBack();
+                return;
+            }
+
+            if (cmd.includes('email') || cmd.includes('send report')) {
+                triggerEmailAction();
+                return;
+            }
+
+            if (cmd.includes('search')) {
+                const query = cmd.replace('search for', '').replace('search', '').trim();
+                document.getElementById('searchInput').value = query;
+                handleSearchInput(query);
+                return;
+            }
+
+            logEvent(`Unrecognized command: "${cmd}". Try saying "search [term]" or "select one".`);
+        }
+
+        function renderCards(cards) {
+            const grid = document.getElementById('cardsGrid');
+            document.getElementById('resultCount').innerText = cards.length;
+
+            if (cards.length === 0) {
+                grid.innerHTML = `
+                    <div class="text-slate-500 text-center italic py-10 bg-slate-950 border border-slate-800 rounded-xl text-xs">
+                        No matching cards found. Try searching for "quantum", "webrtc", or "accessibility".
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            cards.forEach((card, index) => {
+                const badgeNum = index + 1;
+                const div = document.createElement('div');
+                div.className = "bg-slate-950 border border-slate-800 hover:border-indigo-500/50 rounded-xl p-4 transition flex items-start gap-4 cursor-pointer shadow-inner relative group";
+                div.onclick = () => selectCard(card);
+                div.innerHTML = `
+                    <div class="bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-bold w-8 h-8 rounded-lg flex items-center justify-center text-xs shrink-0 shadow">
+                        [${badgeNum}]
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-semibold text-sm text-slate-200 group-hover:text-indigo-300 transition">${escapeHtml(card.title)}</h3>
+                            <span class="text-[10px] text-indigo-400 px-2 py-0.5 bg-indigo-950 border border-indigo-900 rounded-md">${escapeHtml(card.category)}</span>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">${escapeHtml(card.summary)}</p>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function handleSearchInput(query) {
+            const q = query.toLowerCase().trim();
+            if (!q) {
+                activeCards = [...database];
+            } else {
+                activeCards = database.filter(c => 
+                    c.title.toLowerCase().includes(q) || 
+                    c.summary.toLowerCase().includes(q) || 
+                    c.category.toLowerCase().includes(q)
+                );
+            }
+            renderCards(activeCards);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            activeCards = [...database];
+            renderCards(activeCards);
+            speakText("Search cleared. Showing all cards.");
+        }
+
+        function selectCardByIndex(index) {
+            if (activeCards[index]) {
+                selectCard(activeCards[index]);
+            } else {
+                speakText("Item number not found in current results.");
+            }
+        }
+
+        function selectCard(card) {
+            selectedItem = card;
+            const container = document.getElementById('detailContent');
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] text-indigo-400 font-medium px-2 py-0.5 bg-indigo-950 border border-indigo-900 rounded-md">${escapeHtml(card.category)}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">Card ID #${card.id}</span>
+                    </div>
+                    <h3 class="font-bold text-sm text-white">${escapeHtml(card.title)}</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(card.details)}</p>
+                </div>
+                <div class="pt-4 border-t border-slate-800 flex flex-wrap items-center gap-2">
+                    <button onclick="triggerEmailAction()" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow">
+                        <i class="fa-solid fa-envelope"></i> Email This Report
+                    </button>
+                    <button onclick="navigateBack()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition border border-slate-700">
+                        Back to List
+                    </button>
+                </div>
+            `;
+            logEvent(`Drilled down into card: "${card.title}"`);
+            speakText(`Opened ${card.title}.`);
+        }
+
+        function navigateBack() {
+            selectedItem = null;
+            const container = document.getElementById('detailContent');
+            container.innerHTML = `
+                <div class="text-slate-500 text-center italic py-12">
+                    Say <code class="text-indigo-400">"Select [number]"</code> or click a card to open full details and test voice actions like <code class="text-indigo-400">"Email this"</code>.
+                </div>
+            `;
+            logEvent("Returned to main search list.");
+            speakText("Returned to search list.");
+        }
+
+        function triggerEmailAction() {
+            const title = selectedItem ? selectedItem.title : "General Studio Summary";
+            const body = encodeURIComponent(`Hi,\n\nHere is the requested report from the Voice Navigable Studio:\n\nTitle: ${title}\nGenerated hands-free via voice navigation.`);
+            const mailto = `mailto:user@example.com?subject=Voice%20Studio%20Report%20-%20${encodeURIComponent(title)}&body=${body}`;
+            
+            logEvent(`Triggered email action for: "${title}"`);
+            speakText("Prepared your email report.");
+            window.open(mailto, '_blank');
+        }
+
+        function speakText(text) {
+            if (!voiceOutputEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function toggleVoiceOutput() {
+            voiceOutputEnabled = !voiceOutputEnabled;
+            const btn = document.getElementById('btnVoiceOut');
+            if (voiceOutputEnabled) {
+                btn.className = "px-3 py-1.5 text-xs font-medium rounded-xl transition bg-slate-800 border border-slate-700 text-slate-300 flex items-center gap-2";
+                btn.innerHTML = '<i class="fa-solid fa-volume-high text-indigo-400"></i> Voice Output: ON';
+            } else {
+                btn.className = "px-3 py-1.5 text-xs font-medium rounded-xl transition bg-slate-900 border border-slate-800 text-slate-500 flex items-center gap-2";
+                btn.innerHTML = '<i class="fa-solid fa-volume-xmark text-slate-500"></i> Voice Output: OFF';
+            }
+        }
+
+        function logEvent(msg) {
+            const logs = document.getElementById('eventLogs');
+            const time = new Date().toLocaleTimeString();
+            logs.innerHTML += `<div>[${time}] ${msg}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('eventLogs').innerHTML = `[System] Voice event log cleared.`;
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+
+</body>
+</html>
+
